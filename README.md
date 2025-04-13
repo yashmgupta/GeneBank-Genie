@@ -38,8 +38,8 @@ The graphical user interface is built using Tkinter, and the app leverages sever
 1. **Clone the repository:**
 
     ```bash
-    git clone https://github.com/yourusername/your-repository-name.git
-    cd your-repository-name
+    git clone https://github.com/yashmgupta/GeneBank-Genie
+    cd GeneBank-Genie
     ```
 
 2. **Create and activate a virtual environment (optional but recommended):**
