@@ -65,4 +65,4 @@ The graphical user interface is built using Tkinter, and the app leverages sever
 To launch the GeneBank Genie app, run the following command from your project directory:
 
 ```bash
-python your_app_filename.py
+python mt9.1.py
