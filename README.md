@@ -66,6 +66,8 @@ To launch the GeneBank Genie app, run the following command from your project di
 
 ```bash
 python mt9.2.py
+```
+---
 
 ##📋 Usage Instructions
 
