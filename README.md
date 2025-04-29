@@ -66,3 +66,47 @@ To launch the GeneBank Genie app, run the following command from your project di
 
 ```bash
 python mt9.2.py
+
+##📋 Usage Instructions
+
+Once the app is launched:
+
+### 1. Load a GenBank File
+- Click the **"Browse"** button to select a `.gb` or `.gbk` file.
+- The selected file will be used across all analysis modules.
+
+### 2. Explore Functional Tabs:
+| Tab | Functionality |
+|:---|:---|
+| **General Analysis** | Perform feature extraction, PCA, and detect outliers based on taxonomy. |
+| **Gene Analysis** | Select a gene, analyze its metrics, and identify deviations using PCA. |
+| **Sankey Diagram** | Generate a taxonomy flow visualization across hierarchical levels. |
+| **Additional Visualizations** | Create correlation heatmaps, KMeans clustering, and pairplots for feature exploration. |
+| **Dendrogram Analysis** | Perform hierarchical clustering and generate dendrograms. |
+| **Sequence Extraction** | Extract and download full sequences or gene-specific sequences in FASTA format. |
+| **Summary** | View the detailed log of all actions and results during the session. |
+
+---
+
+# 📊 Key Visual Outputs
+
+- **PCA Scatter Plots**: Visualize nucleotide composition, sequence length, GC content, and gene count distributions.
+- **Outlier Detection**: Identify records that deviate from taxonomic groups based on PCA + Mahalanobis distance.
+- **Sankey Diagrams**: Explore taxonomy transitions interactively.
+- **Correlation Heatmaps**: Study relationships between multiple sequence features.
+- **KMeans Clustering**: Group sequences based on feature similarity.
+- **Hierarchical Dendrograms**: Understand phylogenetic or feature-based relationships visually.
+- **Sequence FASTA Files**: Export full or gene-specific sequences easily.
+
+---
+
+# 🧹 Troubleshooting
+
+| Problem | Solution |
+|:-------|:---------|
+| **File not found / file error** | Ensure you load a valid GenBank `.gb` or `.gbk` file first. |
+| **No genes detected** | Your GenBank file may not have gene annotations. Try another dataset. |
+| **Application freeze** | Large datasets can cause temporary lag during visualization (especially Sankey/Dendrogram). Please wait patiently. |
+| **KMeans error** | Ensure enough data points exist for the number of clusters specified. |
+
+---
