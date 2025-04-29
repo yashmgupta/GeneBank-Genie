@@ -69,7 +69,7 @@ python mt9.2.py
 ```
 ---
 
-##📋 Usage Instructions
+### Usage Instructions
 
 Once the app is launched:
 
