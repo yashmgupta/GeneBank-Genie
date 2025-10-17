@@ -3,8 +3,6 @@
 **Date:** October 17, 2025  
 ---
 
-## 🎯 What Was Accomplished
-
 ### Extended Benchmarking
 ✅ Ran comprehensive benchmarks on **6 dataset sizes:**
 - 333 records (primary: Orthoptera mtgenomes)
@@ -24,12 +22,5 @@
 | sim_10k | 10,000 | **1.523 s** | 1.54 MB | ✓ Linear |
 | sim_20k | 20,000 | **3.051 s** | 3.05 MB | ✓ Linear |
 | sim_50k | 50,000 | **7.653 s** | 11.18 MB | ✓ Linear |
-
-### Key Findings
-- ✅ **Linear Scaling:** O(n) time complexity confirmed
-- ✅ **Fast Processing:** 333 records in 53 milliseconds
-- ✅ **Scalable:** Handles 50,000 records in ~7.6 seconds
-- ✅ **Efficient Memory:** < 12 MB overhead even at 50k records
-- ✅ **Predictable:** Performance can be extrapolated to larger datasets
 
 ---
