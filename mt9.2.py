@@ -5,6 +5,7 @@ import subprocess
 import logging
 from Bio import SeqIO, Phylo
 from Bio.SeqRecord import SeqRecord
+from Bio.Seq import UndefinedSequenceError
 import numpy as np
 import pandas as pd
 from collections import defaultdict, Counter
@@ -78,32 +79,47 @@ class AnalysisEngine:
 def extract_gene_sequences(genbank_file, selected_gene):
     """
     Extracts gene sequences corresponding to the selected gene from the GenBank file.
-    Returns a list of SeqRecord objects (one per record).
+    Returns a tuple: (list of SeqRecord objects, list of (record_id, reason) tuples for skipped records).
     """
     records = list(SeqIO.parse(genbank_file, "genbank"))
     gene_seqs = []
+    skipped_records = []
     for rec in records:
-        for feature in rec.features:
-            if feature.type.lower() in ["gene", "cds"]:
-                if "gene" in feature.qualifiers:
-                    gene_name = feature.qualifiers["gene"][0]
-                    if gene_name.upper() == selected_gene.upper():
-                        seq = feature.extract(rec.seq)
-                        new_rec = SeqRecord(seq, id=rec.id, description=rec.annotations.get("organism", ""))
-                        gene_seqs.append(new_rec)
-                        break  # extract one gene per record
-    return gene_seqs
+        try:
+            gene_found = False
+            for feature in rec.features:
+                if feature.type.lower() in ["gene", "cds"]:
+                    if "gene" in feature.qualifiers:
+                        gene_name = feature.qualifiers["gene"][0]
+                        if gene_name.upper() == selected_gene.upper():
+                            seq = feature.extract(rec.seq)
+                            new_rec = SeqRecord(seq, id=rec.id, description=rec.annotations.get("organism", ""))
+                            gene_seqs.append(new_rec)
+                            gene_found = True
+                            break  # extract one gene per record
+            if not gene_found:
+                skipped_records.append((rec.id, "gene not found in record"))
+        except UndefinedSequenceError:
+            logging.warning(f"Skipping record {rec.id}: undefined sequence in extract_gene_sequences")
+            skipped_records.append((rec.id, "undefined sequence"))
+    return gene_seqs, skipped_records
 
 def extract_full_sequences(genbank_file):
     """
     Extracts the complete sequence of each record in the GenBank file and returns them as SeqRecord objects.
+    Returns a tuple: (list of SeqRecord objects, list of (record_id, reason) tuples for skipped records).
     """
     records = list(SeqIO.parse(genbank_file, "genbank"))
     full_seqs = []
+    skipped_records = []
     for rec in records:
-        new_rec = SeqRecord(rec.seq, id=rec.id, description=rec.description)
-        full_seqs.append(new_rec)
-    return full_seqs
+        try:
+            new_rec = SeqRecord(rec.seq, id=rec.id, description=rec.description)
+            full_seqs.append(new_rec)
+        except UndefinedSequenceError:
+            logging.warning(f"Skipping record {rec.id}: undefined sequence in extract_full_sequences")
+            skipped_records.append((rec.id, "undefined sequence"))
+    return full_seqs, skipped_records
 
 def save_fasta(sequences, output_file):
     """
@@ -264,7 +280,7 @@ class GenBankAnalysisApp:
             messagebox.showerror("Selection Error", "No gene selected.")
             return
         self.update_summary(f"Extracting sequences for gene: {selected_gene}")
-        gene_seqs = extract_gene_sequences(self.global_gb_file, selected_gene)
+        gene_seqs, skipped_records = extract_gene_sequences(self.global_gb_file, selected_gene)
         if not gene_seqs:
             messagebox.showerror("Gene Extraction Error", f"No sequences found for gene {selected_gene}")
             return
@@ -274,6 +290,10 @@ class GenBankAnalysisApp:
         output_file = os.path.join(out_dir, f"{selected_gene}_extracted.fasta")
         save_fasta(gene_seqs, output_file)
         self.update_summary(f"Selected gene sequences saved as FASTA: {output_file}")
+        if skipped_records:
+            self.update_summary(f"\n⚠ SKIPPED RECORDS ({len(skipped_records)}):")
+            for rec_id, reason in skipped_records:
+                self.update_summary(f"  - {rec_id}: {reason}")
         messagebox.showinfo("Download Complete", f"FASTA file saved: {output_file}")
 
     def download_full_sequences(self):
@@ -281,7 +301,7 @@ class GenBankAnalysisApp:
         Extract full sequences from the GenBank file and save as a FASTA file.
         """
         self.update_summary("Extracting full sequences from GenBank records...")
-        full_seqs = extract_full_sequences(self.global_gb_file)
+        full_seqs, skipped_records = extract_full_sequences(self.global_gb_file)
         if not full_seqs:
             messagebox.showerror("Extraction Error", "No full sequences could be extracted.")
             return
@@ -291,6 +311,10 @@ class GenBankAnalysisApp:
         output_file = os.path.join(out_dir, "full_sequences.fasta")
         save_fasta(full_seqs, output_file)
         self.update_summary(f"Full sequences saved as FASTA: {output_file}")
+        if skipped_records:
+            self.update_summary(f"\n⚠ SKIPPED RECORDS ({len(skipped_records)}):")
+            for rec_id, reason in skipped_records:
+                self.update_summary(f"  - {rec_id}: {reason}")
         messagebox.showinfo("Download Complete", f"FASTA file saved: {output_file}")
 
     def run_general_analysis(self):
@@ -318,10 +342,17 @@ class GenBankAnalysisApp:
         logging.info(f"Running general analysis with {len(records)} records.")
         data = []
         all_tax_levels = defaultdict(list)
+        skipped_records = []
         for rec in records:
-            seq = str(rec.seq).upper()
+            try:
+                seq = str(rec.seq).upper()
+            except UndefinedSequenceError:
+                logging.warning(f"Skipping record {rec.id}: undefined sequence")
+                skipped_records.append((rec.id, "undefined sequence"))
+                continue
             total_length = len(seq)
             if total_length == 0:
+                skipped_records.append((rec.id, "empty sequence"))
                 continue
             countA = seq.count("A")
             countC = seq.count("C")
@@ -461,6 +492,12 @@ class GenBankAnalysisApp:
 
         df.to_csv("pca_features.csv", index=False)
         self.update_summary("General analysis complete. Results saved to pca_features.csv")
+        if skipped_records:
+            self.update_summary(f"\n⚠ SKIPPED RECORDS ({len(skipped_records)}):")
+            for rec_id, reason in skipped_records:
+                self.update_summary(f"  - {rec_id}: {reason}")
+        else:
+            self.update_summary("✓ All records were processed successfully.")
 
     def run_gene_analysis(self):
         """
@@ -487,16 +524,23 @@ class GenBankAnalysisApp:
         records = list(SeqIO.parse(self.global_gb_file, "genbank"))
         gene_data = []
         all_tax_levels = defaultdict(list)
+        skipped_records = []
         for rec in records:
             gene_seq = None
-            for feature in rec.features:
-                if feature.type.lower() in ["gene", "cds"]:
-                    if "gene" in feature.qualifiers:
-                        gene_name = feature.qualifiers["gene"][0]
-                        if gene_name.upper() == selected_gene.upper():
-                            gene_seq = str(feature.extract(rec.seq)).upper()
-                            break
+            try:
+                for feature in rec.features:
+                    if feature.type.lower() in ["gene", "cds"]:
+                        if "gene" in feature.qualifiers:
+                            gene_name = feature.qualifiers["gene"][0]
+                            if gene_name.upper() == selected_gene.upper():
+                                gene_seq = str(feature.extract(rec.seq)).upper()
+                                break
+            except UndefinedSequenceError:
+                logging.warning(f"Skipping record {rec.id}: undefined sequence during gene extraction")
+                skipped_records.append((rec.id, "undefined sequence"))
+                continue
             if gene_seq is None or len(gene_seq) == 0:
+                skipped_records.append((rec.id, "gene not found or empty"))
                 continue
             gene_length = len(gene_seq)
             countA = gene_seq.count("A")
@@ -575,6 +619,12 @@ class GenBankAnalysisApp:
         plt.show()
         df.to_csv("selected_gene_pca_features.csv", index=False)
         self.update_summary(f"Gene analysis complete for {selected_gene}. Results saved to selected_gene_pca_features.csv")
+        if skipped_records:
+            self.update_summary(f"\n⚠ SKIPPED RECORDS ({len(skipped_records)}):")
+            for rec_id, reason in skipped_records:
+                self.update_summary(f"  - {rec_id}: {reason}")
+        else:
+            self.update_summary("✓ All records were processed successfully.")
 
     def run_sankey_diagram(self):
         """
@@ -758,7 +808,9 @@ class GenBankAnalysisApp:
 
     def show_help_about(self):
         info = ("GeneBank Genie:\n"
-                "Version 1.0 – © Dr Yash Munnalal Gupta\n\n"
+                "Version 1.0 – © Dr Yash Munnalal Gupta\n"
+                "Faculty of Science, Department of Biology\n"
+                "Naresuan University, Thailand\n\n"
                 "GeneBank Genie is a comprehensive tool for analyzing GenBank files. It includes modules for general analysis, gene analysis, "
                 "taxonomic visualization, additional visualizations, dendrogram analysis, and sequence extraction. Use the Help menu for detailed info.")
         messagebox.showinfo("About GeneBank Genie", info)
