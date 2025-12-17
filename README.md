@@ -102,6 +102,14 @@ Once the app is launched:
 
 ---
 
+# 📝 Technical Notes
+
+- **Single-Feature PCA Plots:** For individual features (SeqLength, GC, GeneCount), feature duplication enables 2D scatter plot visualization, as PCA requires at least two variables to produce two components.  This maintains visual consistency and allows preliminary assessment of taxonomic group separation by each feature.
+
+- **Outlier Detection:** Uses Mahalanobis distance with a χ² 95% confidence threshold (df=2), calculated in the 2D PCA-projected space to identify sequences deviating significantly from taxonomic group centroids. 
+
+---
+
 # 🧹 Troubleshooting
 
 | Problem | Solution |
